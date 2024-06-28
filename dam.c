@@ -161,6 +161,8 @@ bar_draw(Bar *bar)
 	}
 
 	wl_list_for_each(seat, &seats, link) {
+		if (seat->bar != bar)
+			continue;
 		w = TEXTW(bar, seat->mode);
 		drwl_setscheme(bar->drw, colors[SchemeNorm]);
 		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, seat->mode, 1);
