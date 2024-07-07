@@ -1,3 +1,2 @@
-dam
-*.o
-*-protocol.*
+.zig-cache
+zig-out
