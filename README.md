@@ -21,8 +21,7 @@ To build dam first ensure that you have the following dependencies:
 
 Afterwards, run:
 ```
-make
-make install
+zig build -Doptimize=ReleaseFast --prefix /usr/local install
 ```
 
 ## Usage
