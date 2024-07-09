@@ -169,7 +169,7 @@ bar_draw(Bar *bar)
 	}
 	
 	if ((w = bar->width - tw - x) > bar->height) {
-		if (*bar->title != '\0') {
+		if (bar->title && *bar->title != '\0') {
 			drwl_setscheme(bar->drw, colors[bar->selected ? SchemeSel : SchemeNorm]);
 			drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->title, 0);
 		} else {
