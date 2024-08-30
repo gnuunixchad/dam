@@ -15,6 +15,7 @@ pub fn build(b: *Build) void {
 	dam.addIncludePath(b.path(""));
 	dam.addCSourceFile(.{
 		.file = b.path("dam.c"),
+		.flags = &.{"-D_GNU_SOURCE"},
 	});
 
 	dam.linkLibC();

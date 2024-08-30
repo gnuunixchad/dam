@@ -14,7 +14,7 @@
 #include <wayland-client.h>
 
 #include "drwl.h"
-#include "poolbuf.h"
+#include "bufpool.h"
 #include "river-status-unstable-v1-protocol.h"
 #include "river-control-unstable-v1-protocol.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
@@ -34,6 +34,7 @@ typedef struct {
 	struct zwlr_layer_surface_v1 *layer_surface;
 	struct zriver_output_status_v1 *river_output_status;
 	Drwl *drw;
+	BufPool pool;
 	uint32_t width, height, scale;
 	int lrpad;
 
@@ -110,9 +111,9 @@ bar_load_fonts(Bar *bar)
 {
 	char fontattrs[12];
 
-	drwl_destroy_font(bar->drw->font);
+	drwl_font_destroy(bar->drw->font);
 	snprintf(fontattrs, sizeof(fontattrs), "dpi=%d", 96 * bar->scale);
-	if (!(drwl_load_font(bar->drw, LENGTH(fonts), fonts, fontattrs)))
+	if (!(drwl_font_create(bar->drw, LENGTH(fonts), fonts, fontattrs)))
 		die("failed to load fonts");
 	bar->lrpad = bar->drw->font->height;
 	bar->height = bar->drw->font->height + 2;
@@ -126,15 +127,15 @@ bar_draw(Bar *bar)
 	int x = 0, w;
 	int boxs = bar->drw->font->height / 9;
 	int boxw = bar->drw->font->height / 6 + 2;
-	PoolBuf *buf;
+	DrwBuf *buf;
 	Seat *seat;
 
 	if (bar->width < 1 || bar->height < 1)
 		return;
 
-	if (!(buf = poolbuf_create(shm, bar->width, bar->height)))
-		die("poolbuf_create:");
-	drwl_prepare_drawing(bar->drw, bar->width, bar->height, buf->data, buf->stride);
+	if (!(buf = bufpool_getbuf(&bar->pool, shm, bar->width, bar->height)))
+		die(errno ? "bufpool_getbuf:" : "no buffer available");
+	drwl_setimage(bar->drw, buf->image);
 	drwl_setscheme(bar->drw, colors[SchemeNorm]);
 
 	/* draw status first so it can be overdrawn by tags later */
@@ -178,11 +179,10 @@ bar_draw(Bar *bar)
 		}
 	}
 
-	drwl_finish_drawing(bar->drw);
+	drwl_setimage(bar->drw, NULL);
 	wl_surface_set_buffer_scale(bar->surface, bar->scale);
 	wl_surface_attach(bar->surface, buf->wl_buf, 0, 0);
 	wl_surface_damage_buffer(bar->surface, 0, 0, bar->width, bar->height);
-	poolbuf_destroy(buf);
 	wl_surface_commit(bar->surface);
 }
 
@@ -198,9 +198,11 @@ bars_draw()
 static void
 bar_destroy(Bar *bar)
 {
+	bufpool_cleanup(&bar->pool);
 	wl_list_remove(&bar->link);
 	free(bar->layout);
 	free(bar->title);
+	drwl_setimage(bar->drw, NULL);
 	drwl_destroy(bar->drw);
 	zriver_output_status_v1_destroy(bar->river_output_status);
 	zwlr_layer_surface_v1_destroy(bar->layer_surface);
