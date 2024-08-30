@@ -8,6 +8,7 @@
 #include <linux/input-event-codes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/signalfd.h>
 #include <poll.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -31,16 +32,17 @@ typedef struct {
 	uint32_t wl_name;
 	struct wl_output *wl_output;
 	struct wl_surface *surface;
-	struct zwlr_layer_surface_v1 *layer_surface;
-	struct zriver_output_status_v1 *river_output_status;
+	bool configured;
+
 	Drwl *drw;
 	BufPool pool;
 	uint32_t width, height, scale;
 	int lrpad;
 
+	struct zwlr_layer_surface_v1 *layer_surface;
+	struct zriver_output_status_v1 *river_output_status;
 	uint32_t mtags, ctags, urg;
 	char *layout, *title;
-
 	bool selected;
 
 	struct wl_list link;
@@ -79,6 +81,8 @@ static struct zriver_control_v1 *river_control;
 static struct wl_list seats, bars;
 static char stext[256];
 
+static int signal_fd = -1;
+
 static void
 noop()
 {
@@ -104,6 +108,29 @@ die(const char *fmt, ...)
 	}
 
 	exit(1);
+}
+
+
+static void
+bar_deinit_surface(Bar *bar)
+{
+	zwlr_layer_surface_v1_destroy(bar->layer_surface);
+	wl_surface_destroy(bar->surface);
+	bar->configured = false;
+}
+
+static void
+bar_destroy(Bar *bar)
+{
+	bufpool_cleanup(&bar->pool);
+	wl_list_remove(&bar->link);
+	free(bar->layout);
+	free(bar->title);
+	drwl_setimage(bar->drw, NULL);
+	drwl_destroy(bar->drw);
+	zriver_output_status_v1_destroy(bar->river_output_status);
+	bar_deinit_surface(bar);
+	wl_output_destroy(bar->wl_output);
 }
 
 static void
@@ -196,21 +223,6 @@ bars_draw()
 }
 
 static void
-bar_destroy(Bar *bar)
-{
-	bufpool_cleanup(&bar->pool);
-	wl_list_remove(&bar->link);
-	free(bar->layout);
-	free(bar->title);
-	drwl_setimage(bar->drw, NULL);
-	drwl_destroy(bar->drw);
-	zriver_output_status_v1_destroy(bar->river_output_status);
-	zwlr_layer_surface_v1_destroy(bar->layer_surface);
-	wl_surface_destroy(bar->surface);
-	wl_output_destroy(bar->wl_output);
-}
-
-static void
 layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
                         uint32_t serial, uint32_t width, uint32_t height)
 {
@@ -218,6 +230,7 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
 	
 	bar->width = width * bar->scale;
 	bar->height = height * bar->scale;
+	bar->configured = true;
 	zwlr_layer_surface_v1_ack_configure(bar->layer_surface, serial);
 	bar_draw(bar);
 }
@@ -250,6 +263,37 @@ static const struct wl_surface_listener surface_listener = {
 	.preferred_buffer_scale = surface_handle_preferred_scale,
 	.preferred_buffer_transform = noop,
 };
+
+static void
+bar_init_surface(Bar *bar)
+{
+	bar->surface = wl_compositor_create_surface(compositor);
+	wl_surface_add_listener(bar->surface, &surface_listener, NULL);
+
+	bar->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+		layer_shell, bar->surface, bar->wl_output, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, "bar");
+	zwlr_layer_surface_v1_add_listener(
+		bar->layer_surface, &layer_surface_listener, bar);
+	zwlr_layer_surface_v1_set_size(bar->layer_surface, 0, bar->height);
+    zwlr_layer_surface_v1_set_exclusive_zone(bar->layer_surface, bar->height);
+	zwlr_layer_surface_v1_set_anchor(bar->layer_surface,
+		(topbar ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP : ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM)
+		| ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+	wl_surface_commit(bar->surface);
+}
+
+static void
+bars_toggle_selected()
+{
+	Bar *bar;
+
+	wl_list_for_each(bar, &bars, link) {
+		if (bar->selected && bar->configured)
+			bar_deinit_surface(bar);
+		else if (bar->selected)
+			bar_init_surface(bar);
+	}
+}
 
 static void
 river_output_status_handle_focused_tags(void *data,
@@ -582,6 +626,7 @@ readstdin(void)
 static void
 setup(void)
 {
+	sigset_t mask;
 	Seat *seat;
 	Bar *bar;
 
@@ -597,6 +642,14 @@ setup(void)
 
 	if (!compositor || !shm || !layer_shell || !river_status_manager || !river_control)
 		die("unsupported compositor");
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGUSR1);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
+		die("sigprocmask:");
+	if ((signal_fd = signalfd(-1, &mask, SFD_NONBLOCK)) < 0)
+		die("signalfd:");
 
 	drwl_init();
 
@@ -617,19 +670,8 @@ setup(void)
 		zriver_output_status_v1_add_listener(bar->river_output_status,
 			&river_output_status_listener, bar);
 
-		bar->surface = wl_compositor_create_surface(compositor);
-		wl_surface_add_listener(bar->surface, &surface_listener, NULL);
-		
-		bar->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-			layer_shell, bar->surface, bar->wl_output, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, "bar");
-		zwlr_layer_surface_v1_add_listener(
-			bar->layer_surface, &layer_surface_listener, bar);
-		zwlr_layer_surface_v1_set_size(bar->layer_surface, 0, bar->height);
-	    zwlr_layer_surface_v1_set_exclusive_zone(bar->layer_surface, bar->height);
-		zwlr_layer_surface_v1_set_anchor(bar->layer_surface,
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
-		wl_surface_commit(bar->surface);
+		if (showbar)
+			bar_init_surface(bar);
 	}
 }
 
@@ -639,6 +681,7 @@ run(void)
 	struct pollfd pfds[] = {
 		{ .fd = wl_display_get_fd(display), .events = POLLIN },
 		{ .fd = STDIN_FILENO,               .events = POLLIN },
+		{ .fd = signal_fd,                  .events = POLLIN },
 	};
 
 	for (;;) {
@@ -649,7 +692,7 @@ run(void)
 		if (wl_display_flush(display) < 0)
 			die("wl_display_flush:");
 
-		if (poll(pfds, 2, -1) < 0) {
+		if (poll(pfds, 3, -1) < 0) {
 			wl_display_cancel_read(display);
 			die("poll:");
 		}
@@ -661,6 +704,15 @@ run(void)
 		}
 		if (pfds[1].revents & POLLIN)
 			readstdin();
+
+		if (pfds[2].revents & POLLIN) {
+			struct signalfd_siginfo si;
+			ssize_t n = read(signal_fd, &si, sizeof(si));
+			if (n != sizeof(si))
+				die("signalfd/read:");
+			if (si.ssi_signo == SIGUSR1)
+				bars_toggle_selected();
+		}
 
 		if (!(pfds[0].revents & POLLIN)) {
 			wl_display_cancel_read(display);

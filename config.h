@@ -1,4 +1,6 @@
 /* appearance */
+static const int showbar     = 0; /* 0 means no bar */
+static const int topbar      = 0; /* 0 means bottom bar */
 static const char *fonts[]   = { "monospace:size=10" };
 static uint32_t colors[][3]  = {
 	/*               fg          bg         */
