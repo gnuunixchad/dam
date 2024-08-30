@@ -157,7 +157,7 @@ bar_draw(Bar *bar)
 	DrwBuf *buf;
 	Seat *seat;
 
-	if (bar->width < 1 || bar->height < 1)
+	if (!bar->configured)
 		return;
 
 	if (!(buf = bufpool_getbuf(&bar->pool, shm, bar->width, bar->height)))
