@@ -8,8 +8,9 @@ PKGS = wayland-client fcft pixman-1
 INCS = `$(PKG_CONFIG) --cflags $(PKGS)`
 LIBS = `$(PKG_CONFIG) --libs $(PKGS)`
 
-FPCFLAGS = -pedantic -Wall $(INCS) $(CPPFLAGS) $(CFLAGS)
-LDLIBS   = $(LIBS)
+DAMCPPFLAGS = -D_GNU_SOURCE
+DAMCFLAGS   = -pedantic -Wall $(INCS) $(DAMCPPFLAGS) $(CPPFLAGS) $(CFLAGS)
+LDLIBS      = $(LIBS)
 
 SRC = dam.o xdg-shell-protocol.o wlr-layer-shell-unstable-v1-protocol.o \
       river-control-unstable-v1-protocol.o river-status-unstable-v1-protocol.o
@@ -18,7 +19,7 @@ OBJ = $(SRC:.c=.o)
 all: dam
 
 .c.o:
-	$(CC) -o $@ -c $(FPCFLAGS) -c $<
+	$(CC) -o $@ -c $(DAMCFLAGS) -c $<
 
 dam.o: wlr-layer-shell-unstable-v1-protocol.h \
        river-control-unstable-v1-protocol.h river-status-unstable-v1-protocol.h
