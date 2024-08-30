@@ -288,15 +288,6 @@ drwl_font_getwidth(Drwl *drwl, const char *text)
 	return drwl_text(drwl, 0, 0, 0, 0, 0, text, 0);
 }
 
-static unsigned int
-drwl_font_getwidth_clamp(Drwl *drwl, const char *text, unsigned int n)
-{
-	unsigned int tmp = 0;
-	if (drwl && drwl->font && text && n)
-		tmp = drwl_text(drwl, 0, 0, 0, 0, 0, text, n);
-	return tmp < n ? tmp : n;
-}
-
 static void
 drwl_image_destroy(Img *image)
 {
