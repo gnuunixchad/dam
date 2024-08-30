@@ -182,18 +182,18 @@ bar_draw(Bar *bar)
 		x += w;
 	}
 
-	if (bar->layout) {
-		w = TEXTW(bar, bar->layout);
-		drwl_setscheme(bar->drw, colors[SchemeNorm]);
-		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->layout, 0);
-	}
-
 	wl_list_for_each(seat, &seats, link) {
 		if (seat->bar != bar)
 			continue;
 		w = TEXTW(bar, seat->mode);
+		drwl_setscheme(bar->drw, colors[SchemeSel]);
+		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, seat->mode, 0);
+	}
+
+	if (bar->layout) {
+		w = TEXTW(bar, bar->layout);
 		drwl_setscheme(bar->drw, colors[SchemeNorm]);
-		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, seat->mode, 1);
+		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->layout, 0);
 	}
 
 	if ((w = bar->width - tw - x) > bar->height) {
