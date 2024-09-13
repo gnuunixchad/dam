@@ -7,30 +7,33 @@ PREFIX = /usr/local
 PKG_CONFIG = pkg-config
 
 PKGS = wayland-client fcft pixman-1
-INCS = `$(PKG_CONFIG) --cflags $(PKGS)`
-LIBS = `$(PKG_CONFIG) --libs $(PKGS)`
+INCS != $(PKG_CONFIG) --cflags $(PKGS)
+LIBS != $(PKG_CONFIG) --libs $(PKGS)
 
-DAMCPPFLAGS = -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE 
-DAMCFLAGS   = -pedantic -Wall $(INCS) $(DAMCPPFLAGS) $(CPPFLAGS) $(CFLAGS)
+DAMCPPFLAGS = -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE $(CPPFLAGS)
+DAMCFLAGS   = -pedantic -Wall $(INCS) $(DAMCPPFLAGS) $(CFLAGS)
 LDLIBS      = $(LIBS)
 
-SRC = dam.o xdg-shell-protocol.o wlr-layer-shell-unstable-v1-protocol.o \
-      river-control-unstable-v1-protocol.o river-status-unstable-v1-protocol.o
+PROTO = xdg-shell-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
+        river-control-unstable-v1-protocol.h river-status-unstable-v1-protocol.h
+SRC = dam.c $(PROTO:.h=.c)
 OBJ = $(SRC:.c=.o)
 
 all: dam
 
 .c.o:
-	$(CC) -o $@ -c $(DAMCFLAGS) -c $<
+	$(CC) -o $@ $(DAMCFLAGS) -c $<
 
-dam.o: wlr-layer-shell-unstable-v1-protocol.h \
-       river-control-unstable-v1-protocol.h river-status-unstable-v1-protocol.h
+config.h:
+	cp config.def.h $@
+
+$(OBJ): config.h $(PROTO)
 
 dam: $(OBJ)
-	$(CC) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-WAYLAND_PROTOCOLS = `$(PKG_CONFIG) --variable=pkgdatadir wayland-protocols`
-WAYLAND_SCANNER   = `$(PKG_CONFIG) --variable=wayland_scanner wayland-scanner`
+WAYLAND_SCANNER   != $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
+WAYLAND_PROTOCOLS != $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols
 
 xdg-shell-protocol.c:
 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
@@ -51,7 +54,7 @@ river-status-unstable-v1-protocol.h:
 	$(WAYLAND_SCANNER) client-header river-status-unstable-v1.xml $@
 
 clean:
-	rm -f dam *.o *-protocol.*
+	rm -f dam $(OBJ) $(PROTO:.h=.c) $(PROTO)
 
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
