@@ -1,15 +1,13 @@
 /* See LICENSE file for copyright and license details. */
-#define _POSIX_C_SOURCE 200809L
 #include <errno.h>
 #include <getopt.h>
+#include <linux/input-event-codes.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
-#include <linux/input-event-codes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/signalfd.h>
-#include <poll.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <wayland-client.h>
@@ -106,6 +104,21 @@ die(const char *fmt, ...)
 	exit(1);
 }
 
+static void
+parse_color(uint32_t *dest, const char *src)
+{
+	int len;
+
+	if (src[0] == '#')
+		src++;
+	len = strlen(src);
+	if (len != 6 && len != 8)
+		die("bad color: %s", src);
+
+	*dest = strtoul(src, NULL, 16);
+	if (len == 6)
+		*dest = (*dest << 8) | 0xFF;
+}
 
 static void
 bar_deinit_surface(Bar *bar)
@@ -696,9 +709,42 @@ cleanup(void)
 	wl_display_disconnect(display);
 }
 
+static void
+usage(void)
+{
+	die("usage: dam [-st] [-f font] [-nb color] [-nf color] [-sb color] [-sf color]\n");
+}
+
 int
 main(int argc, char *argv[])
 {
+	int i;
+
+	for (i = 1; i < argc; i++) {
+		/* these options take no arguments */
+		if (!strcmp(argv[i], "-v")) {
+			puts("dam-"VERSION);
+			return EXIT_SUCCESS;
+		} else if (!strcmp(argv[i], "-s"))
+			showbar = !showbar;
+		else if (!strcmp(argv[i], "-t"))
+			topbar = !showbar;
+		else if (i + 1 == argc)
+			usage();
+		else if (!strcmp(argv[i], "-f"))
+			fonts[0] = argv[++i];
+		else if (!strcmp(argv[i], "-nb"))
+			parse_color(&colors[SchemeNorm][ColBg], argv[++i]);
+		else if (!strcmp(argv[i], "-nf"))
+			parse_color(&colors[SchemeNorm][ColFg], argv[++i]);
+		else if (!strcmp(argv[i], "-sb"))
+			parse_color(&colors[SchemeSel][ColBg], argv[++i]);
+		else if (!strcmp(argv[i], "-sf"))
+			parse_color(&colors[SchemeSel][ColFg], argv[++i]);
+		else
+			usage();
+	}
+
 	setup();
 	run();
 	cleanup();
