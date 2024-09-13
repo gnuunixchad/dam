@@ -482,7 +482,6 @@ pointer_handle_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial
 		uint32_t time, uint32_t button, uint32_t state)
 {
 	pointer.button = state == WL_POINTER_BUTTON_STATE_PRESSED ? button : 0;
-	printf("%d %d %d\n", state, button, pointer.button);
 }
 
 static const struct wl_pointer_listener pointer_listener = {
