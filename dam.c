@@ -40,26 +40,12 @@ typedef struct {
 	int lrpad;
 
 	struct zwlr_layer_surface_v1 *layer_surface;
-	struct zriver_output_status_v1 *river_output_status;
+	struct zriver_output_status_v1 *output_status;
 	uint32_t mtags, ctags, urg;
 	char *layout, *title;
-	bool selected;
 
 	struct wl_list link;
 } Bar;
-
-typedef struct {
-	uint32_t wl_name;
-	struct wl_seat *wl_seat;
-	struct wl_pointer *pointer;
-	struct zriver_seat_status_v1 *river_seat_status;
-	Bar *bar;
-	char *mode;
-	int pointer_x, pointer_y;
-	uint32_t button;
-	
-	struct wl_list link;
-} Seat;
 
 typedef struct {
 	unsigned int click;
@@ -72,14 +58,24 @@ typedef struct {
 
 static struct wl_display *display;
 static struct wl_registry *registry;
-static struct wl_shm *shm;
 static struct wl_compositor *compositor;
+static struct wl_shm *shm;
 static struct zwlr_layer_shell_v1 *layer_shell;
-static struct zriver_status_manager_v1 *river_status_manager;
-static struct zriver_control_v1 *river_control;
+static struct wl_seat *seat;
+static struct zriver_control_v1 *control;
+static struct zriver_status_manager_v1 *status_manager;
 
-static struct wl_list seats, bars;
+static struct zriver_seat_status_v1 *seat_status;
+static struct wl_list bars;
+static Bar *selbar;
 static char stext[256];
+static char *mode;
+
+static struct {
+	struct wl_pointer *pointer;
+	double x, y;
+	uint32_t button;
+} pointer;
 
 static int signal_fd = -1;
 
@@ -122,13 +118,13 @@ bar_deinit_surface(Bar *bar)
 static void
 bar_destroy(Bar *bar)
 {
-	bufpool_cleanup(&bar->pool);
 	wl_list_remove(&bar->link);
+	bufpool_cleanup(&bar->pool);
 	free(bar->layout);
 	free(bar->title);
 	drwl_setimage(bar->drw, NULL);
 	drwl_destroy(bar->drw);
-	zriver_output_status_v1_destroy(bar->river_output_status);
+	zriver_output_status_v1_destroy(bar->output_status);
 	bar_deinit_surface(bar);
 	wl_output_destroy(bar->wl_output);
 }
@@ -155,7 +151,6 @@ bar_draw(Bar *bar)
 	int boxs = bar->drw->font->height / 9;
 	int boxw = bar->drw->font->height / 6 + 2;
 	DrwBuf *buf;
-	Seat *seat;
 
 	if (!bar->configured)
 		return;
@@ -166,7 +161,7 @@ bar_draw(Bar *bar)
 	drwl_setscheme(bar->drw, colors[SchemeNorm]);
 
 	/* draw status first so it can be overdrawn by tags later */
-	if (bar->selected) { /* status is only drawn on selected monitor */
+	if (bar == selbar) { /* status is only drawn on selected monitor */
 		drwl_setscheme(bar->drw, colors[SchemeNorm]);
 		tw = TEXTW(bar, stext) - bar->lrpad + 2; /* 2px right padding */
 		drwl_text(bar->drw, bar->width - tw, 0, tw, bar->height, 0, stext, 0);
@@ -182,13 +177,9 @@ bar_draw(Bar *bar)
 		x += w;
 	}
 
-	wl_list_for_each(seat, &seats, link) {
-		if (seat->bar != bar)
-			continue;
-		w = TEXTW(bar, seat->mode);
-		drwl_setscheme(bar->drw, colors[SchemeSel]);
-		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, seat->mode, 0);
-	}
+	w = TEXTW(bar, mode);
+	drwl_setscheme(bar->drw, colors[SchemeSel]);
+	x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, mode, 0);
 
 	if (bar->layout) {
 		w = TEXTW(bar, bar->layout);
@@ -198,7 +189,7 @@ bar_draw(Bar *bar)
 
 	if ((w = bar->width - tw - x) > bar->height) {
 		if (bar->title && *bar->title != '\0') {
-			drwl_setscheme(bar->drw, colors[bar->selected ? SchemeSel : SchemeNorm]);
+			drwl_setscheme(bar->drw, colors[bar == selbar ? SchemeSel : SchemeNorm]);
 			drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->title, 0);
 		} else {
 			drwl_setscheme(bar->drw, colors[SchemeNorm]);
@@ -288,15 +279,15 @@ bars_toggle_selected()
 	Bar *bar;
 
 	wl_list_for_each(bar, &bars, link) {
-		if (bar->selected && bar->configured)
+		if (bar == selbar && bar->configured)
 			bar_deinit_surface(bar);
-		else if (bar->selected)
+		else if (bar == selbar)
 			bar_init_surface(bar);
 	}
 }
 
 static void
-river_output_status_handle_focused_tags(void *data,
+output_status_handle_focused_tags(void *data,
 		struct zriver_output_status_v1 *output_status, uint32_t tags)
 {
 	Bar *bar = data;
@@ -307,7 +298,7 @@ river_output_status_handle_focused_tags(void *data,
 }
 
 static void
-river_output_status_handle_urgent_tags(void *data,
+output_status_handle_urgent_tags(void *data,
 		struct zriver_output_status_v1 *output_status, uint32_t tags)
 {
 	Bar *bar = data;
@@ -318,7 +309,7 @@ river_output_status_handle_urgent_tags(void *data,
 }
 
 static void
-river_output_status_handle_view_tags(void *data,
+output_status_handle_view_tags(void *data,
 		struct zriver_output_status_v1 *output_status, struct wl_array *wl_array)
 {
 	uint32_t *vt;
@@ -332,7 +323,7 @@ river_output_status_handle_view_tags(void *data,
 }
 
 static void
-river_output_status_handle_layout_name(void *data,
+output_status_handle_layout_name(void *data,
 		struct zriver_output_status_v1 *output_status, const char *name)
 {
 	Bar *bar = data;
@@ -345,7 +336,7 @@ river_output_status_handle_layout_name(void *data,
 }
 
 static void
-river_output_status_handle_layout_name_clear(void *data,
+output_status_handle_layout_name_clear(void *data,
 		struct zriver_output_status_v1 *output_status)
 {
 	Bar *bar = data;
@@ -356,140 +347,119 @@ river_output_status_handle_layout_name_clear(void *data,
 	bar_draw(bar);
 }
 
-static const struct zriver_output_status_v1_listener river_output_status_listener = {
-	.focused_tags = river_output_status_handle_focused_tags,
-	.urgent_tags = river_output_status_handle_urgent_tags,
-	.view_tags = river_output_status_handle_view_tags,
-	.layout_name = river_output_status_handle_layout_name,
-	.layout_name_clear = river_output_status_handle_layout_name_clear
+static const struct zriver_output_status_v1_listener output_status_listener = {
+	.focused_tags = output_status_handle_focused_tags,
+	.urgent_tags = output_status_handle_urgent_tags,
+	.view_tags = output_status_handle_view_tags,
+	.layout_name = output_status_handle_layout_name,
+	.layout_name_clear = output_status_handle_layout_name_clear
 };
 
 
 static void
-river_seat_status_handle_focused_output(void *data,
+seat_status_handle_focused_output(void *data,
 		struct zriver_seat_status_v1 *seat_status, struct wl_output *wl_output)
 {
 	Bar *bar;
-	Seat *seat = data;
 
 	wl_list_for_each(bar, &bars, link) {
 		if (bar->wl_output != wl_output)
 			continue;
 
-		seat->bar = bar;
-		seat->bar->selected = true;
-		bar_draw(bar);
+		bar_draw((selbar = bar));
 		break;
 	}
 }
 
 static void
-river_seat_status_handle_unfocused_output(void *data, struct zriver_seat_status_v1 *seat_status,
+seat_status_handle_unfocused_output(void *data, struct zriver_seat_status_v1 *seat_status,
 				   struct wl_output *wl_output)
 {
-	Seat *seat = data;
+	Bar *oldbar;
 
-	if (!seat->bar)
+	if (!selbar)
 		return;
 
-	seat->bar->selected = false;
-	bar_draw(seat->bar);
-	seat->bar = NULL;
+	oldbar = selbar;
+	selbar = NULL;
+	bar_draw(oldbar);
 }
 
 static void
-river_seat_status_handle_focused_view(void *data,
+seat_status_handle_focused_view(void *data,
 		struct zriver_seat_status_v1 *seat_status, const char *title)
 {
-	Seat *seat = data;
-
-	if (!seat->bar)
+	if (!selbar)
 		return;
 
-	if (seat->bar->title)
-		free(seat->bar->title);
-
-	seat->bar->title = strdup(title);
-	bar_draw(seat->bar);
+	if (selbar->title)
+		free(selbar->title);
+	selbar->title = strdup(title);
+	bar_draw(selbar);
 }
 
 static void
-river_seat_status_handle_mode(void *data,
+seat_status_handle_mode(void *data,
 		struct zriver_seat_status_v1 *seat_status, const char *name)
 {
-	Seat *seat = data;
-
-	if (seat->mode)
-		free(seat->mode);
-
-	seat->mode = strdup(name);
+	if (mode)
+		free(mode);
+	mode = strdup(name);
 	bars_draw();
 }
 
-static const struct zriver_seat_status_v1_listener river_seat_status_listener = {
-	.focused_output = river_seat_status_handle_focused_output,
-	.unfocused_output = river_seat_status_handle_unfocused_output,
-	.focused_view = river_seat_status_handle_focused_view,
-	.mode = river_seat_status_handle_mode,
+static const struct zriver_seat_status_v1_listener seat_status_listener = {
+	.focused_output = seat_status_handle_focused_output,
+	.unfocused_output = seat_status_handle_unfocused_output,
+	.focused_view = seat_status_handle_focused_view,
+	.mode = seat_status_handle_mode,
 };
 
 static void
-pointer_motion(void *data, struct wl_pointer *pointer, uint32_t time,
+pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
 	       wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
-	Seat *seat = data;
-
-	seat->pointer_x = wl_fixed_to_int(surface_x);
-	seat->pointer_y = wl_fixed_to_int(surface_y);
+	pointer.x = wl_fixed_to_int(surface_x);
+	pointer.y = wl_fixed_to_int(surface_y);
 }
 
 static void
-pointer_handle_frame(void *data, struct wl_pointer *pointer)
+pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 {
 	int lw, mw = 0;
 	unsigned int i = 0, /* j = 0, */ x = 0;
 	unsigned int click;
-	/* Seat *iter; */
-	Seat *seat = data;
 	char tagbuf[4];
 
-	if (!seat->button || !seat->bar)
+	if (!pointer.button || !selbar)
 		return;
 
-	lw = TEXTW(seat->bar, seat->bar->layout);
+	lw = TEXTW(selbar, selbar->layout);
 
 	do
-		x += TEXTW(seat->bar, tags[i]);
-	while (seat->pointer_x >= x && ++i < LENGTH(tags));
+		x += TEXTW(selbar, tags[i]);
+	while (pointer.x >= x && ++i < LENGTH(tags));
 
-/*
-	wl_list_for_each(iter, &seats, link) {
-		mw += TEXTW(seat->bar, iter->mode);
-		if (seat->pointer_x < x + mw)
-			j++;
-	}
-*/
-	
 	if (i < LENGTH(tags))
 		click = ClkTagBar;
-	else if (seat->pointer_x > x + lw && seat->pointer_x < x + lw + mw)
+	else if (pointer.x > x + lw && pointer.x < x + lw + mw)
 		click = ClkMode;
-	else if (seat->pointer_x < x + lw)
+	else if (pointer.x < x + lw)
 		click = ClkLayout;
-	else if (seat->pointer_x > seat->bar->width - (int)TEXTW(seat->bar, stext))
+	else if (pointer.x > selbar->width - (int)TEXTW(selbar, stext))
 		click = ClkStatus;
 	else
 		click = ClkTitle;
 
 	switch (click) {
 	case ClkTagBar:
-		zriver_control_v1_add_argument(river_control, 
-			seat->button == BTN_LEFT ? "set-focused-tags" :
-			seat->button == BTN_MIDDLE ? "toggle-focused-tags" :
+		zriver_control_v1_add_argument(control, 
+			pointer.button == BTN_LEFT ? "set-focused-tags" :
+			pointer.button == BTN_MIDDLE ? "toggle-focused-tags" :
 			"set-view-tags");
 		snprintf(tagbuf, sizeof(tagbuf), "%d", 1 << i);
-		zriver_control_v1_add_argument(river_control, tagbuf);
-		zriver_control_v1_run_command(river_control, seat->wl_seat);
+		zriver_control_v1_add_argument(control, tagbuf);
+		zriver_control_v1_run_command(control, seat);
 		break;
 	case ClkLayout:
 		/* TODO: cannot disable rivertile; change layout to 'floating' */
@@ -498,8 +468,8 @@ pointer_handle_frame(void *data, struct wl_pointer *pointer)
 		/* TODO: river has no method of getting a list of modes */
 		break;
 	case ClkTitle:
-		zriver_control_v1_add_argument(river_control, "zoom");
-		zriver_control_v1_run_command(river_control, seat->wl_seat);
+		zriver_control_v1_add_argument(control, "zoom");
+		zriver_control_v1_run_command(control, seat);
 		break;
 	case ClkStatus:
 		/* dwm spawns termcmd */
@@ -508,11 +478,11 @@ pointer_handle_frame(void *data, struct wl_pointer *pointer)
 }
 
 static void
-pointer_handle_button(void *data, struct wl_pointer *pointer, uint32_t serial,
+pointer_handle_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
 		uint32_t time, uint32_t button, uint32_t state)
 {
-	Seat *seat = data;
-	seat->button = state == WL_POINTER_BUTTON_STATE_PRESSED ? button : 0;
+	pointer.button = state == WL_POINTER_BUTTON_STATE_PRESSED ? button : 0;
+	printf("%d %d %d\n", state, button, pointer.button);
 }
 
 static const struct wl_pointer_listener pointer_listener = {
@@ -531,24 +501,13 @@ static void
 seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
 		enum wl_seat_capability caps)
 {
-	Seat *seat = data;
-
 	if (!(caps & WL_SEAT_CAPABILITY_POINTER))
 		return;
 
-	seat->pointer = wl_seat_get_pointer(seat->wl_seat);
-	wl_pointer_add_listener(seat->pointer, &pointer_listener, seat);
+	pointer.pointer = wl_seat_get_pointer(seat);
+	wl_pointer_add_listener(pointer.pointer, &pointer_listener, NULL);
 }
 
-
-static void
-seat_destroy(Seat *seat)
-{
-	wl_list_remove(&seat->link);
-	zriver_seat_status_v1_destroy(seat->river_seat_status);
-	wl_pointer_destroy(seat->pointer);
-	wl_seat_destroy(seat->wl_seat);
-}
 
 static const struct wl_seat_listener seat_listener = {
 	.capabilities = seat_handle_capabilities,
@@ -566,15 +525,12 @@ registry_handle_global(void *data, struct wl_registry *wl_registry,
 	else if (!strcmp(interface, zwlr_layer_shell_v1_interface.name))
 		layer_shell = wl_registry_bind(wl_registry, name, &zwlr_layer_shell_v1_interface, 2);
 	else if (!strcmp(interface, wl_seat_interface.name)) {
-		Seat *seat = calloc(1, sizeof(Seat));
-		seat->wl_name = name;
-		seat->wl_seat = wl_registry_bind(registry, name, &wl_seat_interface, 5);
-		wl_seat_add_listener(seat->wl_seat, &seat_listener, seat);
-		wl_list_insert(&seats, &seat->link);
+		seat = wl_registry_bind(registry, name, &wl_seat_interface, 5);
+		wl_seat_add_listener(seat, &seat_listener, NULL);
 	} else if (!strcmp(interface, zriver_control_v1_interface.name))
-		river_control = wl_registry_bind(registry, name, &zriver_control_v1_interface, 1);
+		control = wl_registry_bind(registry, name, &zriver_control_v1_interface, 1);
 	else if (!strcmp(interface, zriver_status_manager_v1_interface.name))
-		river_status_manager = wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, 4);
+		status_manager = wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, 4);
 	else if (!strcmp(interface, wl_output_interface.name)) {
 		Bar *bar = calloc(1, sizeof(Bar));
 		bar->scale = 1;
@@ -587,15 +543,8 @@ registry_handle_global(void *data, struct wl_registry *wl_registry,
 static void
 registry_handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
 {
-	Seat *seat;
 	Bar *bar;
 
-	wl_list_for_each(seat, &seats, link) {
-		if (seat->wl_name == name) {
-			seat_destroy(seat);
-			return;
-		}
-	}
 	wl_list_for_each(bar, &bars, link) {
 		if (bar->wl_name == name) {
 			bar_destroy(bar);
@@ -627,24 +576,23 @@ static void
 setup(void)
 {
 	sigset_t mask;
-	Seat *seat;
 	Bar *bar;
 
 	if (!(display = wl_display_connect(NULL)))
 		die("failed to connect to wayland");
 
 	wl_list_init(&bars);
-	wl_list_init(&seats);
 
 	registry = wl_display_get_registry(display);
 	wl_registry_add_listener(registry, &registry_listener, NULL);
 	wl_display_roundtrip(display);
 
-	if (!compositor || !shm || !layer_shell || !river_status_manager || !river_control)
+	if (!compositor || !shm || !layer_shell || !status_manager || !control || !seat)
 		die("unsupported compositor");
 
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGUSR1);
+	sigaddset(&mask, SIGTERM);
 
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
 		die("sigprocmask:");
@@ -653,22 +601,20 @@ setup(void)
 
 	drwl_init();
 
-	wl_list_for_each(seat, &seats, link) {
-		seat->river_seat_status = zriver_status_manager_v1_get_river_seat_status(
-			river_status_manager, seat->wl_seat);
-		zriver_seat_status_v1_add_listener(seat->river_seat_status,
-			&river_seat_status_listener, seat);
-	}
+	seat_status = zriver_status_manager_v1_get_river_seat_status(
+		status_manager, seat);
+	zriver_seat_status_v1_add_listener(seat_status,
+		&seat_status_listener, NULL);
 	
 	wl_list_for_each(bar, &bars, link) {
 		if (!(bar->drw = drwl_create()))
 			die("failed to create drwl context");
 		bar_load_fonts(bar);
 
-		bar->river_output_status = zriver_status_manager_v1_get_river_output_status(
-			river_status_manager, bar->wl_output);
-		zriver_output_status_v1_add_listener(bar->river_output_status,
-			&river_output_status_listener, bar);
+		bar->output_status = zriver_status_manager_v1_get_river_output_status(
+			status_manager, bar->wl_output);
+		zriver_output_status_v1_add_listener(bar->output_status,
+			&output_status_listener, bar);
 
 		if (showbar)
 			bar_init_surface(bar);
@@ -699,7 +645,7 @@ run(void)
 
 		if (pfds[1].revents & POLLHUP) {
 			pfds[1].fd = -1;
-			memset(stext, 0, LENGTH(stext));
+			stext[0] = '\0';
 			bars_draw();
 		}
 		if (pfds[1].revents & POLLIN)
@@ -712,6 +658,8 @@ run(void)
 				die("signalfd/read:");
 			if (si.ssi_signo == SIGUSR1)
 				bars_toggle_selected();
+			else if (si.ssi_signo == SIGTERM)
+				break;
 		}
 
 		if (!(pfds[0].revents & POLLIN)) {
@@ -729,20 +677,22 @@ run(void)
 static void
 cleanup(void)
 {
-	Seat *seat;
-	Bar *bar;
+	Bar *bar, *bar_tmp;
 
-	wl_list_for_each(seat, &seats, link)
-		seat_destroy(seat);
-	wl_list_for_each(bar, &bars, link)
+	wl_pointer_destroy(pointer.pointer);
+	if (mode)
+		free(mode);
+	wl_list_for_each_safe(bar, bar_tmp, &bars, link)
 		bar_destroy(bar);
+	zriver_seat_status_v1_destroy(seat_status);
 
 	drwl_fini();
-	zriver_control_v1_destroy(river_control);
-	zriver_status_manager_v1_destroy(river_status_manager);
+	zriver_status_manager_v1_destroy(status_manager);
+	zriver_control_v1_destroy(control);
+	wl_seat_destroy(seat);
 	zwlr_layer_shell_v1_destroy(layer_shell);
-	wl_compositor_destroy(compositor);
 	wl_shm_destroy(shm);
+	wl_compositor_destroy(compositor);
 	wl_registry_destroy(registry);
 	wl_display_disconnect(display);
 }
