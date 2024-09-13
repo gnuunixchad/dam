@@ -819,7 +819,7 @@ cleanup(void)
 static void
 usage(void)
 {
-	die("usage: dam [-st] [-f font] [-nb color] [-nf color] [-sb color] [-sf color]\n");
+	die("usage: dam [-st] [-f font] [-nb color] [-nf color] [-sb color] [-sf color]");
 }
 
 int
