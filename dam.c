@@ -52,6 +52,11 @@ typedef struct {
 	uint32_t arg;
 } Button;
 
+static void view(uint32_t arg);
+static void toggleview(uint32_t arg);
+static void toggletag(uint32_t arg);
+static void zoom(uint32_t arg);
+
 #include "config.h"
 
 static struct wl_display *display;
@@ -118,6 +123,43 @@ parse_color(uint32_t *dest, const char *src)
 	*dest = strtoul(src, NULL, 16);
 	if (len == 6)
 		*dest = (*dest << 8) | 0xFF;
+}
+
+void
+view(uint32_t arg)
+{
+	char tagbuf[4];
+	zriver_control_v1_add_argument(control, "set-focused-tags");
+	snprintf(tagbuf, sizeof(tagbuf), "%d", 1 << arg);
+	zriver_control_v1_add_argument(control, tagbuf);
+	zriver_control_v1_run_command(control, seat);
+}
+
+void
+toggleview(uint32_t arg)
+{
+	char tagbuf[4];
+	zriver_control_v1_add_argument(control, "toggle-focused-tags");
+	snprintf(tagbuf, sizeof(tagbuf), "%d", 1 << arg);
+	zriver_control_v1_add_argument(control, tagbuf);
+	zriver_control_v1_run_command(control, seat);
+}
+
+void
+toggletag(uint32_t arg)
+{
+	char tagbuf[4];
+	zriver_control_v1_add_argument(control, "set-view-tags");
+	snprintf(tagbuf, sizeof(tagbuf), "%d", 1 << arg);
+	zriver_control_v1_add_argument(control, tagbuf);
+	zriver_control_v1_run_command(control, seat);
+}
+
+static void
+zoom(uint32_t arg)
+{
+	zriver_control_v1_add_argument(control, "zoom");
+	zriver_control_v1_run_command(control, seat);
 }
 
 static void
@@ -440,9 +482,8 @@ static void
 pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 {
 	int lw, mw = 0;
-	unsigned int i = 0, /* j = 0, */ x = 0;
+	unsigned int i = 0, /* j = 0, */ x = 0, arg;
 	unsigned int click;
-	char tagbuf[4];
 
 	if (!pointer.button || !selbar)
 		return;
@@ -453,9 +494,10 @@ pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 		x += TEXTW(selbar, tags[i]);
 	while (pointer.x >= x && ++i < LENGTH(tags));
 
-	if (i < LENGTH(tags))
+	if (i < LENGTH(tags)) {
 		click = ClkTagBar;
-	else if (pointer.x > x + lw && pointer.x < x + lw + mw)
+		arg = i;
+	} else if (pointer.x > x + lw && pointer.x < x + lw + mw)
 		click = ClkMode;
 	else if (pointer.x < x + lw)
 		click = ClkLayout;
@@ -464,30 +506,13 @@ pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 	else
 		click = ClkTitle;
 
-	switch (click) {
-	case ClkTagBar:
-		zriver_control_v1_add_argument(control, 
-			pointer.button == BTN_LEFT ? "set-focused-tags" :
-			pointer.button == BTN_MIDDLE ? "toggle-focused-tags" :
-			"set-view-tags");
-		snprintf(tagbuf, sizeof(tagbuf), "%d", 1 << i);
-		zriver_control_v1_add_argument(control, tagbuf);
-		zriver_control_v1_run_command(control, seat);
-		break;
-	case ClkLayout:
-		/* TODO: cannot disable rivertile; change layout to 'floating' */
-		break;
-	case ClkMode:
-		/* TODO: river has no method of getting a list of modes */
-		break;
-	case ClkTitle:
-		zriver_control_v1_add_argument(control, "zoom");
-		zriver_control_v1_run_command(control, seat);
-		break;
-	case ClkStatus:
-		/* dwm spawns termcmd */
-		break;
-	}
+	for (i = 0; i < LENGTH(buttons); i++) {
+		if (buttons[i].click == click && buttons[i].func
+		&&  buttons[i].button == pointer.button)
+			buttons[i].func(click == ClkTagBar && !buttons[i].arg
+					? arg
+					: buttons[i].arg);
+        }
 }
 
 static void
