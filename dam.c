@@ -401,10 +401,15 @@ static void
 output_status_handle_layout_name(void *data,
 		struct zriver_output_status_v1 *output_status, const char *name)
 {
+	int i;
 	Bar *bar = data;
 
 	if (bar->layout)
 		free(bar->layout);
+
+	for (i = 0; i < LENGTH(layouts); i++)
+		if (!strcmp(name, layouts[i][0]))
+			name = layouts[i][1];
 	bar->layout = strdup(name);
 
 	bar_draw(bar);

@@ -11,6 +11,15 @@ static uint32_t colors[][3]  = {
 /* tagging */
 static char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
+/* layout name replacement values */
+static const char *layouts[][2] = {
+	/* layout name          replace */
+	{ "rivertile - left",   "=[]" },
+	{ "rivertile - right",  "[]=" },
+	{ "rivertile - top",    "[^]" },
+	{ "rivertile - bottom", "[_]" },
+};
+
 static const char *termcmd[] = { "foot", NULL };
 
 /* button definitions */
