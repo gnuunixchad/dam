@@ -250,9 +250,11 @@ bar_draw(Bar *bar)
 		x += w;
 	}
 
-	w = TEXTW(bar, mode);
-	drwl_setscheme(bar->drw, colors[SchemeSel]);
-	x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, mode, 0);
+	if (strcmp(mode, "normal")) {
+		w = TEXTW(bar, mode);
+		drwl_setscheme(bar->drw, colors[SchemeSel]);
+		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, mode, 0);
+	}
 
 	if (bar->layout) {
 		w = TEXTW(bar, bar->layout);
