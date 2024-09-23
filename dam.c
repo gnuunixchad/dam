@@ -501,6 +501,7 @@ pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
 {
 	pointer.x = wl_fixed_to_int(surface_x);
 	pointer.y = wl_fixed_to_int(surface_y);
+	pointer.button = 0;
 }
 
 static void
