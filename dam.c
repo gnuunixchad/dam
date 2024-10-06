@@ -58,7 +58,7 @@ typedef struct {
 	const Arg arg;
 } Button;
 
-static void cmd(const Arg *arg);
+static void command(const Arg *arg);
 static void spawn(const Arg *arg);
 
 #include "config.h"
@@ -130,7 +130,29 @@ parse_color(uint32_t *dest, const char *src)
 }
 
 static void
-cmd(const Arg *arg)
+command_handle_message(void *data,
+		struct zriver_command_callback_v1 *zriver_command_callback_v1,
+		const char *message)
+{
+	if (message && message[0] != '\0')
+		fprintf(stderr, "command message: %s\n", message);
+}
+
+static struct zriver_command_callback_v1_listener callback_listener = {
+	.success = command_handle_message,
+	.failure = command_handle_message,
+};
+
+static void
+command_run(void)
+{
+	struct zriver_command_callback_v1 *callback;
+	callback = zriver_control_v1_run_command(control, seat);
+	zriver_command_callback_v1_add_listener(callback, &callback_listener, NULL);
+}
+
+static void
+command(const Arg *arg)
 {
 	char argbuf[4];
 	zriver_control_v1_add_argument(control, arg->s);
@@ -138,7 +160,7 @@ cmd(const Arg *arg)
 		snprintf(argbuf, sizeof(argbuf), "%d", arg->ui);
 		zriver_control_v1_add_argument(control, argbuf);
 	}
-	zriver_control_v1_run_command(control, seat);
+	command_run();
 }
 
 static void
@@ -148,7 +170,7 @@ spawn(const Arg *arg)
 	zriver_control_v1_add_argument(control, "spawn");
 	for (i = (char *const *)arg->v; *i != NULL; i++)
 		zriver_control_v1_add_argument(control, *i);
-	zriver_control_v1_run_command(control, seat);
+	command_run();
 }
 
 static void

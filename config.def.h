@@ -26,9 +26,9 @@ static const char *termcmd[] = { "foot", NULL };
 /* click can be ClkTagBar, ClkLayout, ClkMode, ClkTitle, ClkStatus */
 static const Button buttons[] = {
 	/* click     button      function argument */
-	{ ClkTagBar, BTN_LEFT,   cmd,     {.s = "set-focused-tags"} },
-	{ ClkTagBar, BTN_RIGHT,  cmd,     {.s = "toggle-focused-tags"} },
-	{ ClkTagBar, BTN_MIDDLE, cmd,     {.s = "set-view-tags"} },
-	{ ClkTitle,  BTN_LEFT,   cmd,     {.s = "zoom"} },
+	{ ClkTagBar, BTN_LEFT,   command, {.s = "set-focused-tags"} },
+	{ ClkTagBar, BTN_RIGHT,  command, {.s = "toggle-focused-tags"} },
+	{ ClkTagBar, BTN_MIDDLE, command, {.s = "set-view-tags"} },
+	{ ClkTitle,  BTN_LEFT,   command, {.s = "zoom"} },
 	{ ClkStatus, BTN_MIDDLE, spawn,   {.v = termcmd } },
 };
