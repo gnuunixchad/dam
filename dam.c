@@ -45,10 +45,9 @@ typedef struct {
 	struct wl_list link;
 } Bar;
 
-typedef union {
-	int i;
+typedef struct {
 	unsigned int ui;
-	float f;
+	char *s;
 	const void *v;
 } Arg;
 
@@ -59,10 +58,7 @@ typedef struct {
 	const Arg arg;
 } Button;
 
-static void view(const Arg *arg);
-static void toggleview(const Arg *arg);
-static void toggletag(const Arg *arg);
-static void zoom(const Arg *arg);
+static void cmd(const Arg *arg);
 static void spawn(const Arg *arg);
 
 #include "config.h"
@@ -133,40 +129,15 @@ parse_color(uint32_t *dest, const char *src)
 		*dest = (*dest << 8) | 0xFF;
 }
 
-void
-view(const Arg *arg)
-{
-	char tagbuf[4];
-	zriver_control_v1_add_argument(control, "set-focused-tags");
-	snprintf(tagbuf, sizeof(tagbuf), "%d", arg->ui);
-	zriver_control_v1_add_argument(control, tagbuf);
-	zriver_control_v1_run_command(control, seat);
-}
-
-void
-toggleview(const Arg *arg)
-{
-	char tagbuf[4];
-	zriver_control_v1_add_argument(control, "toggle-focused-tags");
-	snprintf(tagbuf, sizeof(tagbuf), "%d", arg->ui);
-	zriver_control_v1_add_argument(control, tagbuf);
-	zriver_control_v1_run_command(control, seat);
-}
-
-void
-toggletag(const Arg *arg)
-{
-	char tagbuf[4];
-	zriver_control_v1_add_argument(control, "set-view-tags");
-	snprintf(tagbuf, sizeof(tagbuf), "%d", arg->ui);
-	zriver_control_v1_add_argument(control, tagbuf);
-	zriver_control_v1_run_command(control, seat);
-}
-
 static void
-zoom(const Arg *arg)
+cmd(const Arg *arg)
 {
-	zriver_control_v1_add_argument(control, "zoom");
+	char argbuf[4];
+	zriver_control_v1_add_argument(control, arg->s);
+	if (arg->ui) {
+		snprintf(argbuf, sizeof(argbuf), "%d", arg->ui);
+		zriver_control_v1_add_argument(control, argbuf);
+	}
 	zriver_control_v1_run_command(control, seat);
 }
 
@@ -509,8 +480,8 @@ pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 {
 	int lw, mw = 0;
 	Arg arg = {0};
-	unsigned int i = 0, /* j = 0, */ x = 0;
-	unsigned int click;
+	unsigned int i = 0, x = 0;
+	unsigned int tag, click;
 
 	if (!pointer.button || !selbar)
 		return;
@@ -523,7 +494,7 @@ pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 
 	if (i < LENGTH(tags)) {
 		click = ClkTagBar;
-		arg.ui = 1 << i;
+		tag = 1 << i;
 	} else if (pointer.x > x + lw && pointer.x < x + lw + mw)
 		click = ClkMode;
 	else if (pointer.x < x + lw)
@@ -533,12 +504,12 @@ pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
 	else
 		click = ClkTitle;
 
-	for (i = 0; i < LENGTH(buttons); i++) {
-		if (buttons[i].click == click && buttons[i].func
-		&&  buttons[i].button == pointer.button)
-			buttons[i].func(click == ClkTagBar && !buttons[i].arg.i
-					? &arg
-					: &buttons[i].arg);
+	for (i = 0; i < LENGTH(buttons); i++)
+		if (buttons[i].click == click && buttons[i].func && buttons[i].button == pointer.button) {
+			arg = buttons[i].arg;
+			if (click == ClkTagBar && !arg.ui)
+				arg.ui = tag;
+			buttons[i].func(&arg);
         }
 }
 
