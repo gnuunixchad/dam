@@ -238,7 +238,8 @@ bar_draw(Bar *bar)
 		drwl_setscheme(bar->drw, colors[bar->mtags & 1 << i ? SchemeSel : SchemeNorm]);
 		drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, tags[i], bar->urg & 1 << i);
 		if (bar->ctags & 1 << i)
-			drwl_rect(bar->drw, x + boxs, boxs, boxw, boxw, 0,
+			drwl_rect(bar->drw, x + boxs, boxs, boxw, boxw,
+				bar->mtags & 1 << i && bar == selbar,
 				bar->urg & 1 << i);
 		x += w;
 	}
