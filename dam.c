@@ -211,11 +211,10 @@ bar_load_fonts(Bar *bar)
 static void
 bar_draw(Bar *bar)
 {
-	int i;
-	int tw = 0;
-	int x = 0, w;
+	int x = 0, w, tw = 0;
 	int boxs = bar->drw->font->height / 9;
 	int boxw = bar->drw->font->height / 6 + 2;
+	unsigned int i;
 	DrwBuf *buf;
 
 	if (!bar->configured)
@@ -224,7 +223,6 @@ bar_draw(Bar *bar)
 	if (!(buf = bufpool_getbuf(&bar->pool, shm, bar->width, bar->height)))
 		die(errno ? "bufpool_getbuf:" : "no buffer available");
 	drwl_setimage(bar->drw, buf->image);
-	drwl_setscheme(bar->drw, colors[SchemeNorm]);
 
 	/* draw status first so it can be overdrawn by tags later */
 	if (bar == selbar) { /* status is only drawn on selected monitor */
