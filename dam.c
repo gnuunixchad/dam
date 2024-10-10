@@ -233,8 +233,8 @@ bar_draw(Bar *bar)
 	/* draw status first so it can be overdrawn by tags later */
 	if (bar == selbar) { /* status is only drawn on selected monitor */
 		drwl_setscheme(bar->drw, colors[SchemeNorm]);
-		tw = TEXTW(bar, stext) - bar->lrpad + 2; /* 2px right padding */
-		drwl_text(bar->drw, bar->width - tw, 0, tw, bar->height, 0, stext, 0);
+		tw = TEXTW(bar, stext);
+		drwl_text(bar->drw, bar->width - tw, 0, tw, bar->height, bar->lrpad / 2, stext, 0);
 	}
 
 	for (i = 0; i < LENGTH(tags); i++) {
