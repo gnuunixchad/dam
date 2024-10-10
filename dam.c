@@ -151,7 +151,7 @@ command_run(void)
 	zriver_command_callback_v1_add_listener(callback, &callback_listener, NULL);
 }
 
-static void
+void
 command(const Arg *arg)
 {
 	char argbuf[4];
@@ -163,7 +163,7 @@ command(const Arg *arg)
 	command_run();
 }
 
-static void
+void
 spawn(const Arg *arg)
 {
 	char *const *i;
@@ -174,7 +174,7 @@ spawn(const Arg *arg)
 }
 
 static void
-bar_deinit_surface(Bar *bar)
+bar_hide(Bar *bar)
 {
 	zwlr_layer_surface_v1_destroy(bar->layer_surface);
 	wl_surface_destroy(bar->surface);
@@ -191,7 +191,7 @@ bar_destroy(Bar *bar)
 	drwl_setimage(bar->drw, NULL);
 	drwl_destroy(bar->drw);
 	zriver_output_status_v1_destroy(bar->output_status);
-	bar_deinit_surface(bar);
+	bar_hide(bar);
 	wl_output_destroy(bar->wl_output);
 }
 
@@ -324,7 +324,7 @@ static const struct wl_surface_listener surface_listener = {
 };
 
 static void
-bar_init_surface(Bar *bar)
+bar_show(Bar *bar)
 {
 	bar->surface = wl_compositor_create_surface(compositor);
 	wl_surface_add_listener(bar->surface, &surface_listener, NULL);
@@ -348,9 +348,9 @@ bars_toggle_selected()
 
 	wl_list_for_each(bar, &bars, link) {
 		if (bar == selbar && bar->configured)
-			bar_deinit_surface(bar);
+			bar_hide(bar);
 		else if (bar == selbar)
-			bar_init_surface(bar);
+			bar_show(bar);
 	}
 }
 
@@ -674,7 +674,7 @@ setup(void)
 			&output_status_listener, bar);
 
 		if (showbar)
-			bar_init_surface(bar);
+			bar_show(bar);
 	}
 }
 
