@@ -285,7 +285,9 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
                         uint32_t serial, uint32_t width, uint32_t height)
 {
 	Bar *bar = data;
-	
+
+	if (bar->configured)
+		return;
 	bar->width = width * bar->scale;
 	bar->height = height * bar->scale;
 	bar->configured = true;
