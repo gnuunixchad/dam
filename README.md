@@ -29,4 +29,7 @@ make install
 
 Run `dam`.
 
+To hide the current selected output's monitor, the `USR1` signal can be
+sent to do so.
+
 [river]: https://codeberg.org/river
