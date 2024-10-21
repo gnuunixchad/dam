@@ -615,7 +615,7 @@ registry_handle_global(void *data, struct wl_registry *wl_registry,
 	else if (!strcmp(interface, zwlr_layer_shell_v1_interface.name))
 		layer_shell = wl_registry_bind(wl_registry, name, &zwlr_layer_shell_v1_interface, 3);
 	else if (!strcmp(interface, wl_seat_interface.name)) {
-		seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
+		seat = wl_registry_bind(registry, name, &wl_seat_interface, 5);
 		wl_seat_add_listener(seat, &seat_listener, NULL);
 	} else if (!strcmp(interface, zriver_control_v1_interface.name))
 		control = wl_registry_bind(registry, name, &zriver_control_v1_interface, 1);
