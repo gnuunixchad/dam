@@ -261,7 +261,7 @@ bar_draw(Bar *bar)
 	}
 
 	if ((w = bar->width - tw - x) > bar->height) {
-		if (bar->title && *bar->title != '\0') {
+		if (bar->title) {
 			drwl_setscheme(bar->drw, colors[bar == selbar ? SchemeSel : SchemeNorm]);
 			drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->title, 0);
 		} else {
@@ -546,7 +546,9 @@ seat_status_handle_focused_view(void *data,
 
 	if (selbar->title)
 		free(selbar->title);
-	selbar->title = strdup(title);
+	selbar->title = NULL;
+	if (title[0] != '\0')
+		selbar->title = strdup(title);
 	bar_frame(selbar);
 }
 
