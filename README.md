@@ -2,7 +2,7 @@
 
 dam is a itsy-bitsy dwm-esque bar for [river].
 
-![](dam-demo.png)
+![](dam-demo.jpg)
 
 To use a status-bar, you can pass in status text via stdin:
 ```
