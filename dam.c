@@ -283,12 +283,13 @@ bar_frame(Bar *bar)
 }
 
 static void
-bars_draw()
+bars_draw(void)
 {
 	Bar *bar;
 
 	wl_list_for_each(bar, &bars, link)
-		bar_draw(bar);
+		if (bar->drw) /* called before initial bars setup */
+			bar_draw(bar);
 }
 
 static void
@@ -382,6 +383,7 @@ bar_destroy(Bar *bar)
 	zriver_output_status_v1_destroy(bar->output_status);
 	bar_hide(bar);
 	wl_output_destroy(bar->wl_output);
+	free(bar);
 }
 
 static void
@@ -430,7 +432,7 @@ bar_show(Bar *bar)
 }
 
 static void
-bars_toggle_selected()
+bars_toggle_selected(void)
 {
 	Bar *bar;
 
