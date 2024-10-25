@@ -685,14 +685,13 @@ registry_handle_global(void *data, struct wl_registry *wl_registry,
 static void
 registry_handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
 {
-	Bar *bar;
+	Bar *bar, *bar_tmp;
 
-	wl_list_for_each(bar, &bars, link) {
+	wl_list_for_each_safe(bar, bar_tmp, &bars, link)
 		if (bar->wl_name == name) {
 			bar_destroy(bar);
 			return;
 		}
-	}
 }
 
 static const struct wl_registry_listener registry_listener = {
