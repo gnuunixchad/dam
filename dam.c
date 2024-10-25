@@ -348,6 +348,7 @@ output_status_handle_layout_name_clear(void *data,
 
 	if (bar->layout)
 		free(bar->layout);
+	bar->layout = NULL;
 	bar_frame(bar);
 }
 
