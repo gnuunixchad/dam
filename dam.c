@@ -373,8 +373,10 @@ bar_destroy(Bar *bar)
 {
 	wl_list_remove(&bar->link);
 	bufpool_cleanup(&bar->pool);
-	free(bar->layout);
-	free(bar->title);
+	if (bar->layout)
+		free(bar->layout);
+	if (bar->title)
+		free(bar->title);
 	drwl_setimage(bar->drw, NULL);
 	drwl_destroy(bar->drw);
 	zriver_output_status_v1_destroy(bar->output_status);
