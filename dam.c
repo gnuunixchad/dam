@@ -30,6 +30,7 @@ typedef struct {
 	uint32_t wl_name;
 	struct wl_output *wl_output;
 	struct wl_surface *surface;
+	struct wl_callback *frame_callback;
 	bool configured;
 
 	Drwl *drw;
@@ -255,6 +256,32 @@ bar_draw(Bar *bar)
 	wl_surface_commit(bar->surface);
 }
 
+
+static void
+frame_callback_handle_done(void *data, struct wl_callback *callback,
+		uint32_t time)
+{
+	Bar *bar = data;
+
+	wl_callback_destroy(bar->frame_callback);
+	bar->frame_callback = NULL;
+	bar_draw(bar);
+}
+
+static const struct wl_callback_listener frame_callback_listener = {
+	.done = frame_callback_handle_done,
+};
+
+static void
+bar_frame(Bar *bar)
+{
+	if (bar->frame_callback)
+		return;
+	bar->frame_callback = wl_surface_frame(bar->surface);
+	wl_callback_add_listener(bar->frame_callback, &frame_callback_listener, bar);
+	wl_surface_commit(bar->surface);
+}
+
 static void
 bars_draw()
 {
@@ -264,7 +291,6 @@ bars_draw()
 		bar_draw(bar);
 }
 
-
 static void
 output_status_handle_focused_tags(void *data,
 		struct zriver_output_status_v1 *output_status, uint32_t tags)
@@ -272,8 +298,7 @@ output_status_handle_focused_tags(void *data,
 	Bar *bar = data;
 
 	bar->mtags = tags;
-
-	bar_draw(bar);
+	bar_frame(bar);
 }
 
 static void
@@ -283,8 +308,7 @@ output_status_handle_urgent_tags(void *data,
 	Bar *bar = data;
 
 	bar->urg = tags;
-
-	bar_draw(bar);
+	bar_frame(bar);
 }
 
 static void
@@ -297,8 +321,7 @@ output_status_handle_view_tags(void *data,
 	bar->ctags = 0;
 	wl_array_for_each(vt, wl_array)
 		bar->ctags |= *vt;
-
-	bar_draw(bar);
+	bar_frame(bar);
 }
 
 static void
@@ -310,13 +333,11 @@ output_status_handle_layout_name(void *data,
 
 	if (bar->layout)
 		free(bar->layout);
-
 	for (i = 0; i < LENGTH(layouts); i++)
 		if (!strcmp(name, layouts[i][0]))
 			name = layouts[i][1];
 	bar->layout = strdup(name);
-
-	bar_draw(bar);
+	bar_frame(bar);
 }
 
 static void
@@ -327,8 +348,7 @@ output_status_handle_layout_name_clear(void *data,
 
 	if (bar->layout)
 		free(bar->layout);
-
-	bar_draw(bar);
+	bar_frame(bar);
 }
 
 static const struct zriver_output_status_v1_listener output_status_listener = {
@@ -469,7 +489,7 @@ seat_status_handle_focused_output(void *data,
 		if (bar->wl_output != wl_output)
 			continue;
 
-		bar_draw((selbar = bar));
+		bar_frame((selbar = bar));
 		break;
 	}
 }
@@ -485,7 +505,7 @@ seat_status_handle_unfocused_output(void *data, struct zriver_seat_status_v1 *se
 
 	oldbar = selbar;
 	selbar = NULL;
-	bar_draw(oldbar);
+	bar_frame(oldbar);
 }
 
 static void
@@ -498,7 +518,7 @@ seat_status_handle_focused_view(void *data,
 	if (selbar->title)
 		free(selbar->title);
 	selbar->title = strdup(title);
-	bar_draw(selbar);
+	bar_frame(selbar);
 }
 
 static void
