@@ -77,6 +77,7 @@ static struct zriver_seat_status_v1 *seat_status;
 static struct wl_list bars;
 static Bar *selbar;
 static char stext[256];
+static char river_version[14];
 static char *mode;
 
 static struct {
@@ -112,6 +113,26 @@ die(const char *fmt, ...)
 	}
 
 	exit(1);
+}
+
+static void
+river_version_setup(void)
+{
+	char *p;
+	FILE *fp;
+
+	if (!(fp = popen("river -version", "r")))
+		die("popen:");
+
+	p = fgets(river_version, sizeof(river_version) - 1, fp);
+	if (pclose(fp) < 0)
+		die("pclose:");
+	if (!p)
+		die("no river version read");
+
+	river_version[strcspn(river_version, "\n")] = 0;
+	memmove(p + 6, p, strlen(p) + 1);
+	memcpy(p, "river ", 6);
 }
 
 static void
@@ -286,6 +307,9 @@ static void
 bars_draw(void)
 {
 	Bar *bar;
+
+	if (stext[0] == '\0')
+		strcpy(stext, river_version);
 
 	wl_list_for_each(bar, &bars, link)
 		if (bar->drw) /* called before initial bars setup */
@@ -704,6 +728,8 @@ setup(void)
 
 	if (!compositor || !shm || !layer_shell || !status_manager || !control || !seat)
 		die("unsupported compositor");
+
+	river_version_setup();
 
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGUSR1);
