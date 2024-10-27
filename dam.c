@@ -396,6 +396,9 @@ bar_hide(Bar *bar)
 static void
 bar_destroy(Bar *bar)
 {
+	if (bar == selbar)
+		selbar = NULL;
+
 	wl_list_remove(&bar->link);
 	bufpool_cleanup(&bar->pool);
 	if (bar->layout)
