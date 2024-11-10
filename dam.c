@@ -478,6 +478,10 @@ output_handle_done(void *data, struct wl_output *wl_output)
 
 	if (showbar)
 		bar_show(bar);
+
+	/* https://codeberg.org/river/river/issues/1160 */
+	if (wl_list_length(&bars) == 1)
+		selbar = bar;
 }
 
 static void
