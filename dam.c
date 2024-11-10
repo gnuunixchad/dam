@@ -254,11 +254,10 @@ bar_draw(Bar *bar)
 		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, mode, 0);
 	}
 
-	if (bar->layout) {
-		w = TEXTW(bar, bar->layout);
-		drwl_setscheme(bar->drw, colors[SchemeNorm]);
-		x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->layout, 0);
-	}
+	bar->layout = bar->layout ? bar->layout : strdup(layouts[LENGTH(layouts)-1][1]);
+	w = TEXTW(bar, bar->layout);
+	drwl_setscheme(bar->drw, colors[SchemeNorm]);
+	x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->layout, 0);
 
 	if ((w = bar->width - tw - x) > bar->height) {
 		if (bar->title) {
@@ -354,7 +353,7 @@ output_status_handle_layout_name(void *data,
 	if (bar->layout)
 		free(bar->layout);
 	for (i = 0; i < LENGTH(layouts); i++)
-		if (!strcmp(name, layouts[i][0]))
+		if (layouts[i][0] && !strcmp(name, layouts[i][0]))
 			name = layouts[i][1];
 	bar->layout = strdup(name);
 	bar_frame(bar);
