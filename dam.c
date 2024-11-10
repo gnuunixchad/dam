@@ -478,10 +478,7 @@ output_handle_done(void *data, struct wl_output *wl_output)
 
 	if (showbar)
 		bar_show(bar);
-
-	/* https://codeberg.org/river/river/issues/1160 */
-	if (wl_list_length(&bars) == 1)
-		selbar = bar;
+		
 }
 
 static void
@@ -540,7 +537,9 @@ seat_status_handle_focused_view(void *data,
 	selbar->title = NULL;
 	if (title[0] != '\0')
 		selbar->title = strdup(title);
-	bar_frame(selbar);
+	/* river sends focused_view too early, before bar surface init */
+	if (selbar->surface)
+		bar_frame(selbar);
 }
 
 static void
@@ -669,6 +668,10 @@ registry_handle_global(void *data, struct wl_registry *wl_registry,
 		bar->wl_output = wl_registry_bind(registry, name, &wl_output_interface, 2);
 		wl_output_add_listener(bar->wl_output, &output_listener, bar);
 		wl_list_insert(&bars, &bar->link);
+
+		/* https://codeberg.org/river/river/issues/1160 */
+		if (wl_list_length(&bars) == 1)
+			selbar = bar;
 	}
 }
 
