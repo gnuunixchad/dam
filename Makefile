@@ -1,6 +1,6 @@
 .POSIX:
 
-VERSION =0
+VERSION = 0
 
 PREFIX = /usr/local
 
@@ -10,9 +10,9 @@ PKGS = wayland-client fcft pixman-1
 INCS != $(PKG_CONFIG) --cflags $(PKGS)
 LIBS != $(PKG_CONFIG) --libs $(PKGS)
 
-DAMCPPFLAGS = -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE $(CPPFLAGS)
-DAMCFLAGS   = -pedantic -Wall $(INCS) $(DAMCPPFLAGS) $(CFLAGS)
-LDLIBS      = $(LIBS)
+CPPFLAGS += -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE
+CFLAGS   += -pedantic -Wall $(INCS)
+LDLIBS   = $(LIBS)
 
 PROTO = xdg-shell-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
         river-control-unstable-v1-protocol.h river-status-unstable-v1-protocol.h
@@ -21,16 +21,11 @@ OBJ = $(SRC:.c=.o)
 
 all: dam
 
-.c.o:
-	$(CC) -o $@ $(DAMCFLAGS) -c $<
-
 config.h:
 	cp config.def.h $@
 
-$(OBJ): config.h $(PROTO)
-
 dam: $(OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+$(OBJ): config.h $(PROTO)
 
 WAYLAND_SCANNER   != $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
 WAYLAND_PROTOCOLS != $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols
