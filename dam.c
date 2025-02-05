@@ -294,6 +294,7 @@ static const struct wl_callback_listener frame_callback_listener = {
 static void
 bar_frame(Bar *bar)
 {
+	/* note: river sends focused_view too early, before bar surface init */
 	if (bar->frame_callback || !bar->configured)
 		return;
 	bar->frame_callback = wl_surface_frame(bar->surface);
@@ -538,9 +539,7 @@ seat_status_handle_focused_view(void *data,
 	selbar->title = NULL;
 	if (title[0] != '\0')
 		selbar->title = strdup(title);
-	/* river sends focused_view too early, before bar surface init */
-	if (selbar->surface)
-		bar_frame(selbar);
+	bar_frame(selbar);
 }
 
 static void
