@@ -294,7 +294,7 @@ static const struct wl_callback_listener frame_callback_listener = {
 static void
 bar_frame(Bar *bar)
 {
-	if (bar->frame_callback)
+	if (bar->frame_callback || !bar->configured)
 		return;
 	bar->frame_callback = wl_surface_frame(bar->surface);
 	wl_callback_add_listener(bar->frame_callback, &frame_callback_listener, bar);
@@ -408,14 +408,15 @@ bar_destroy(Bar *bar)
 
 static void
 layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
-                        uint32_t serial, uint32_t width, uint32_t height)
+                        uint32_t serial, uint32_t w, uint32_t h)
 {
 	Bar *bar = data;
 
-	if (bar->width / bar->scale == width && bar->height / bar->scale == height)
+	if (bar->configured
+		&& (bar->width / bar->scale == w && bar->height / bar->scale == h))
 		return;
-	bar->width = width * bar->scale;
-	bar->height = height * bar->scale;
+	bar->width = w * bar->scale;
+	bar->height = h * bar->scale;
 	bar->configured = true;
 	zwlr_layer_surface_v1_ack_configure(bar->layer_surface, serial);
 	bar_draw(bar);
