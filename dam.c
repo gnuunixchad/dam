@@ -77,7 +77,7 @@ static struct zriver_seat_status_v1 *seat_status;
 static struct wl_list bars;
 static Bar *selbar;
 static char stext[256];
-static char river_version[14];
+static char river_version[22];
 static char *mode;
 
 static struct {
