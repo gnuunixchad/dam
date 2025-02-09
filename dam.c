@@ -727,6 +727,7 @@ setup(void)
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGUSR1);
 	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGINT);
 
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
 		die("sigprocmask:");
@@ -758,7 +759,9 @@ run(void)
 		if (wl_display_flush(display) < 0)
 			die("wl_display_flush:");
 
-		if (poll(pfds, 3, -1) < 0) {
+		while (poll(pfds, 3, -1) < 0) {
+			if (errno == EAGAIN)
+				continue;
 			wl_display_cancel_read(display);
 			die("poll:");
 		}
@@ -778,7 +781,8 @@ run(void)
 				die("signalfd/read:");
 			if (si.ssi_signo == SIGUSR1)
 				bars_toggle_selected();
-			else if (si.ssi_signo == SIGTERM)
+			else if (si.ssi_signo == SIGTERM ||
+			         si.ssi_signo == SIGINT)
 				break;
 		}
 
@@ -814,6 +818,7 @@ cleanup(void)
 	wl_compositor_destroy(compositor);
 	wl_registry_destroy(registry);
 	wl_display_disconnect(display);
+	close(signal_fd); /* ignore error */
 }
 
 static void
