@@ -260,13 +260,11 @@ bar_draw(Bar *bar)
 	x = drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->layout, 0);
 
 	if ((w = bar->width - tw - x) > bar->height) {
-		if (bar->title) {
-			drwl_setscheme(bar->drw, colors[bar == selbar ? SchemeSel : SchemeNorm]);
+		drwl_setscheme(bar->drw, colors[bar == selbar && bar->title ? SchemeSel : SchemeNorm]);
+		if (bar->title)
 			drwl_text(bar->drw, x, 0, w, bar->height, bar->lrpad / 2, bar->title, 0);
-		} else {
-			drwl_setscheme(bar->drw, colors[SchemeNorm]);
+		else
 			drwl_rect(bar->drw, x, 0, w, bar->height, 1, 1);
-		}
 	}
 
 	drwl_setimage(bar->drw, NULL);
