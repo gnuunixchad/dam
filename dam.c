@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <assert.h>
 #include <errno.h>
 #include <getopt.h>
 #include <linux/input-event-codes.h>
@@ -724,6 +725,7 @@ setup(void)
 
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGUSR1);
+	sigaddset(&mask, SIGUSR2);
 	sigaddset(&mask, SIGTERM);
 	sigaddset(&mask, SIGINT);
 
@@ -750,21 +752,16 @@ run(void)
 	};
 
 	for (;;) {
-		if (wl_display_prepare_read(display) < 0)
-			if (wl_display_dispatch_pending(display) < 0)
-				die("wl_display_dispatch_pending:");
+		wl_display_flush(display);
 
-		if (wl_display_flush(display) < 0)
-			die("wl_display_flush:");
-
-		while (poll(pfds, 3, -1) < 0) {
-			if (errno == EAGAIN)
-				continue;
-			wl_display_cancel_read(display);
+		while (poll(pfds, 3, -1) < 0)
 			die("poll:");
-		}
 
-		if (pfds[1].revents & POLLHUP) {
+		if (pfds[0].revents & POLLIN)
+			if (wl_display_dispatch(display) < 0)
+				die("display dispatch failed");
+
+		if (pfds[1].revents & POLLHUP) { /* stdin closed */
 			pfds[1].fd = -1;
 			stext[0] = '\0';
 			bars_draw();
@@ -783,16 +780,6 @@ run(void)
 			         si.ssi_signo == SIGINT)
 				break;
 		}
-
-		if (!(pfds[0].revents & POLLIN)) {
-			wl_display_cancel_read(display);
-			continue;
-		}
-
-		if (wl_display_read_events(display) < 0)
-			die("wl_display_read_events:");
-		if (wl_display_dispatch_pending(display) < 0)
-			die("wl_display_dispatch_pending");
 	}
 }
 
