@@ -13,8 +13,8 @@
 #include <unistd.h>
 #include <wayland-client.h>
 
-#include "drwl.h"
-#include "bufpool.h"
+#include "drwl/drwl.h"
+#include "drwl/bufpool.h"
 #include "river-status-unstable-v1-protocol.h"
 #include "river-control-unstable-v1-protocol.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
