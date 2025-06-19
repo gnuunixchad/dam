@@ -206,7 +206,7 @@ bar_load_fonts(Bar *bar)
 	if (!(drwl_font_create(bar->drw, LENGTH(fonts), fonts, fontattrs)))
 		die("failed to load fonts");
 
-	bar->lrpad = bar->drw->font->height;
+	bar->lrpad = bar->drw->font->height *0.75;
 	bar->height = bar->drw->font->height + 2;
 	if (bar->layer_surface) {
 		zwlr_layer_surface_v1_set_size(bar->layer_surface, 0, bar->height / bar->scale);
@@ -232,11 +232,11 @@ bar_draw(Bar *bar)
 	drwl_setimage(bar->drw, buf->image);
 
 	/* draw status first so it can be overdrawn by tags later */
-	if (bar == selbar) { /* status is only drawn on selected monitor */
+	//if (bar == selbar) { /* status is only drawn on selected monitor */
 		drwl_setscheme(bar->drw, colors[SchemeNorm]);
 		tw = TEXTW(bar, stext);
 		drwl_text(bar->drw, bar->width - tw, 0, tw, bar->height, bar->lrpad / 2, stext, 0);
-	}
+	//}
 
 	for (i = 0; i < LENGTH(tags); i++) {
 		w = TEXTW(bar, tags[i]);
