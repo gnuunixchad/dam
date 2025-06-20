@@ -19,6 +19,11 @@ static const char *layouts[][2] = {
 	{ "rivertile - top",    "[^]" },
 	{ "rivertile - bottom", "[_]" },
 	{ NULL,                 "><>" }, /* no layout, last layout */
+    { "left",               "[]=" }, /* rivercarro */
+    { "right",              "=[]" },
+    { "top",                "[^]" },
+    { "bottom",             "[_]" },
+    { "monocle",            "[M]" },
 };
 
 static const char *termcmd[] = { "footclient", NULL };
