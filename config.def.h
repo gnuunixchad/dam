@@ -9,21 +9,21 @@ static uint32_t colors[][3]  = {
 };
 
 /* tagging */
-static char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+static char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" };
 
 /* layout name replacement values */
 static const char *layouts[][2] = {
 	/* layout name          replace */
-	{ "rivertile - left",   "[]=" },
+	{ "rivertile - left",   "[]=" }, /* rivertile */
 	{ "rivertile - right",  "=[]" },
 	{ "rivertile - top",    "[^]" },
 	{ "rivertile - bottom", "[_]" },
-	{ NULL,                 "><>" }, /* no layout, last layout */
     { "left",               "[]=" }, /* rivercarro */
     { "right",              "=[]" },
     { "top",                "[^]" },
     { "bottom",             "[_]" },
     { "monocle",            "[M]" },
+	{ NULL,                 "><>" }, /* no layout, last layout */
 };
 
 static const char *termcmd[] = { "footclient", NULL };
