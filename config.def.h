@@ -9,7 +9,7 @@ static uint32_t colors[][3]  = {
 };
 
 /* tagging */
-static char *tags[] = { "", "", "󰆍", "", "󰿎", "", "󰇮", "", "󰝚", "" };
+static char *tags[] = { "󰆍", "", "🗁", "", "󰿎", "", "󰇮", "", "󰝚" };
 
 /* layout name replacement values */
 static const char *layouts[][2] = {
