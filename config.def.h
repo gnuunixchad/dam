@@ -10,7 +10,7 @@ static uint32_t colors[][3]  = {
 
 /* tagging */
 /* tags name depends on ttf-nerd-fonts-symbols */
-static char *tags[] = { "󰆍", "", "🗁", "", "󰿎", "", "󰇮", "", "󰝚" };
+static char *tags[] = { "󰋜", "󰈹", "󰆍", "󰈔", "󰿎", "󰲍", "󰇮", "", "󰝚" };
 
 /* layout name replacement values */
 static const char *layouts[][2] = {
