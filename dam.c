@@ -206,7 +206,7 @@ bar_load_fonts(Bar *bar)
 	if (!(drwl_font_create(bar->drw, LENGTH(fonts), fonts, fontattrs)))
 		die("failed to load fonts");
 
-	bar->lrpad = bar->drw->font->height *0.75;
+	bar->lrpad = bar->drw->font->height *0.60;
 	bar->height = bar->drw->font->height + 2;
 	if (bar->layer_surface) {
 		zwlr_layer_surface_v1_set_size(bar->layer_surface, 0, bar->height / bar->scale);
