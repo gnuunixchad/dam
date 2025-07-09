@@ -1,4 +1,4 @@
-# My build of [dam](https://codeberg.org/sewn/dam)
+# <img src="./misc/dam-repo.png" width="24"/> My build of [dam](https://codeberg.org/sewn/dam)
 
 dam is a itsy-bitsy dwm-esque bar for [river].
 
