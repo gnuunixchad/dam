@@ -9,7 +9,7 @@ To use a status-bar, you can pass in status text via stdin:
 # Start in river with damblocks, a line generator I wrote that can be found on
 # https://codeberg.org/unixchad/damblocks
 # https://github.com/gnuunixchad/damblocks
-pgrep '$HOME/.local/bin/sbar dam' || riverctl spawn "$HOME/.local/bin/damblocks | dam"
+pgrep 'dam' || riverctl spawn "$HOME/.local/bin/damblocks | dam"
 ```
 
 ## Building
