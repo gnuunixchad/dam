@@ -6,10 +6,25 @@ dam is a itsy-bitsy dwm-esque bar for [river].
 
 To use a status-bar, you can pass in status text via stdin:
 ```sh
-# Start in river with damblocks, a line generator I wrote that can be found on
+# Start in river with damblocks, a line generator with signaling support I wrote
 # https://codeberg.org/unixchad/damblocks
 # https://github.com/gnuunixchad/damblocks
-pgrep 'dam' || riverctl spawn "$HOME/.local/bin/damblocks | dam"
+riverctl spawn "${HOME}/.local/bin/dam-run"
+```
+```sh dam-run
+bar_start() {
+    ${HOME}/.local/bin/damblocks | dam
+}
+
+bar_restart() {
+    killall dam
+    pkill -f damblocks
+    bar_start
+}
+
+if ! pgrep 'dam' > /dev/null || ! pgrep -f 'damblocks' > /dev/null; then
+    bar_restart
+fi
 ```
 
 ## Building
