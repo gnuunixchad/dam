@@ -1,0 +1,14 @@
+--- /home/nate/doc/git/dam/dam.c	2025-07-16 16:52:52.473858203 +0800
++++ dam.c	2025-07-08 20:07:14.337322886 +0800
+@@ -232,11 +232,11 @@
+ 	drwl_setimage(bar->drw, buf->image);
+
+ 	/* draw status first so it can be overdrawn by tags later */
+-	if (bar == selbar) { /* status is only drawn on selected monitor */
+ 		drwl_setscheme(bar->drw, colors[SchemeNorm]);
+ 		tw = TEXTW(bar, stext);
+ 		drwl_text(bar->drw, bar->width - tw, 0, tw, bar->height, bar->lrpad / 2, stext, 0);
+-	}
+
+ 	for (i = 0; i < LENGTH(tags); i++) {
+ 		w = TEXTW(bar, tags[i]);
