@@ -1,0 +1,11 @@
+--- dam.c	2025-07-16 16:52:52.473858203 +0800
++++ dam.c	2025-07-08 20:07:14.337322886 +0800
+@@ -206,7 +206,7 @@
+ 	if (!(drwl_font_create(bar->drw, LENGTH(fonts), fonts, fontattrs)))
+ 		die("failed to load fonts");
+ 
+-	bar->lrpad = bar->drw->font->height;
++	bar->lrpad = bar->drw->font->height *0.75;
+ 	bar->height = bar->drw->font->height + 2;
+ 	if (bar->layer_surface) {
+ 		zwlr_layer_surface_v1_set_size(bar->layer_surface, 0, bar->height / bar->scale);
