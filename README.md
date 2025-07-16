@@ -4,6 +4,8 @@ dam is a itsy-bitsy dwm-esque bar for [river].
 
 ![](./dam-damblocks.png)
 
+For changes I've made, check [patches](./patches)
+
 To use a status-bar, you can pass in status text via stdin:
 ```sh
 # Start in river with damblocks, a line generator with signaling support I wrote
