@@ -24,9 +24,7 @@ bar_restart() {
     bar_start
 }
 
-if ! pgrep 'dam' > /dev/null || ! pgrep -f 'damblocks' > /dev/null; then
-    bar_restart
-fi
+! pgrep 'dam' > /dev/null 2>&1 || ! pgrep -f 'damblocks' > /dev/null 2>&1 && bar_restart
 ```
 
 ## Building
