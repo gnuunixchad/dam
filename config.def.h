@@ -20,11 +20,11 @@ static const char *layouts[][2] = {
 	{ "rivertile - right",  "=[]" },
 	{ "rivertile - top",    "[^]" },
 	{ "rivertile - bottom", "[_]" },
-    { "left",               "[]=" }, /* rivercarro */
-    { "right",              "=[]" },
-    { "top",                "[^]" },
-    { "bottom",             "[_]" },
-    { "monocle",            "[M]" },
+	{ "left",               "[]=" }, /* rivercarro */
+	{ "right",              "=[]" },
+	{ "top",                "[^]" },
+	{ "bottom",             "[_]" },
+	{ "monocle",            "[M]" },
 	{ NULL,                 "><>" }, /* no layout, last layout */
 };
 
