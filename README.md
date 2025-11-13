@@ -15,12 +15,14 @@ riverctl spawn "${HOME}/.local/bin/dam-run"
 ```
 ```sh dam-run
 bar_start() {
-    ${HOME}/.local/bin/damblocks | dam
+    ${HOME}/.local/bin/damblocks | dam &
+    ${HOME}/.local/bin/damblocks-mpdd
 }
 
 bar_restart() {
     killall dam
     pkill -f damblocks
+    pkill -f damblocks-mpdd
     bar_start
 }
 
