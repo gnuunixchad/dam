@@ -1,7 +1,7 @@
 /* appearance */
 static int showbar           = 1; /* 0 means no bar */
 static int topbar            = 1; /* 0 means bottom bar */
-static const char *fonts[]   = { "SourceCodePro:size=13" };
+static const char *fonts[]   = { "SourceCodePro:size=13:weight=Medium" };
 static uint32_t colors[][3]  = {
 	/*               fg          bg         */
 	[SchemeNorm] = { 0xbbbbbbff, 0x000000ff },
