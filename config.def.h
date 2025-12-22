@@ -4,8 +4,8 @@ static int topbar            = 1; /* 0 means bottom bar */
 static const char *fonts[]   = { "SourceCodePro:size=13:weight=Medium" };
 static uint32_t colors[][3]  = {
 	/*               fg          bg         */
-	[SchemeNorm] = { 0xbbbbbbff, 0x000000ff },
-	[SchemeSel]  = { 0xeeeeeeff, 0x427b58ff },
+	[SchemeNorm] = { 0xaaaaaaff, 0x0000aaff },
+	[SchemeSel]  = { 0x0000aaff, 0xaaaaaaff },
 };
 
 /* tagging */
