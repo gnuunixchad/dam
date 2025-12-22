@@ -2,7 +2,7 @@
 
 dam is a itsy-bitsy dwm-esque bar for [river].
 
-![](./dam-damblocks.png)
+![](./dam-colorscheme-tty.png)
 
 For changes I've made, check [patches](./patches)
 
