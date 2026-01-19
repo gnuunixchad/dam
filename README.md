@@ -1,6 +1,6 @@
 # <img src="./misc/dam-repo.png" width="24"/> My build of [dam](https://codeberg.org/sewn/dam)
 
-dam is a itsy-bitsy dwm-esque bar for [river].
+dam is a itsy-bitsy dwm-esque bar for [river-classic].
 
 ![](./dam-damblocks.png)
 
@@ -8,7 +8,7 @@ For changes I've made, check [patches](./patches)
 
 To use a status-bar, you can pass in status text via stdin:
 ```sh
-# Start in river with damblocks, a line generator with signaling support I wrote
+# Start in river-classic with damblocks, a line generator with signaling support I wrote
 # https://codeberg.org/unixchad/damblocks
 # https://github.com/gnuunixchad/damblocks
 riverctl spawn "${HOME}/.local/bin/dam-run"
@@ -54,4 +54,4 @@ Run `dam`.
 To hide the current selected output's monitor, the `USR1` signal can be
 sent to do so.
 
-[river]: https://codeberg.org/river
+[river-classic]: https://codeberg.org/river/river-classic
