@@ -122,7 +122,7 @@ river_version_setup(void)
 	char *p;
 	FILE *fp;
 
-	if (!(fp = popen("river -version", "r")))
+	if (!(fp = popen("river-classic -version", "r")))
 		die("popen:");
 
 	p = fgets(river_version, sizeof(river_version) - 1, fp);
